@@ -26,7 +26,7 @@ public class EmiCalculator {
 
         //Convert annual percent to monthly decimal
         // e.g., 12.5% per year = 12.5 / 12/ 100 = 0.010417 per month
-        double monthlyRate = annualRate /12.0 /100.0;
+        double monthlyRate = annualRate /12.0 ; //BUG: forgot to divide by 100
         double power = Math.pow(1 + monthlyRate, tenureInMonths);
         double emi = principal * monthlyRate * power / (power - 1);
         return Math.round(emi * 100.0) / 100.0;
