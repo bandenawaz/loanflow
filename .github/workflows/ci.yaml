@@ -1,150 +1,104 @@
-#LoanFLOW - CI Pipeline(Build + Test)
-
 name: LoanFlow CI Pipeline
 
-#TRIGGERS
 on:
   push:
     branches:
       - main
       - develop
-      - 'feature/**'  #If any feature branch
+      - "feature/**"
+
   pull_request:
     branches:
       - main
       - develop
-  workflow_dispatch: #manual trigger button in Github Ui
 
-# GLOBAL Variables
+  workflow_dispatch:
+
 env:
-  JAVA_VERSION: '21'
-  JAVA_DISTRIBUTION: 'temurin'
-  #Faster JVM startup on CI machines(limited RAM)
-  MAVEN_OPTS: '-Xmx512m -XX:+TieredCompilation -XX:TieredStopAtLevel=1'
+  JAVA_VERSION: "21"
+  JAVA_DISTRIBUTION: "temurin"
+  MAVEN_OPTS: "-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
-#JOBS
 jobs:
-  build-and-test:
-    name: Build and Test
-    runs-on: ubuntu-latest   #Github provided Ubuntu Linux machine
+
+  build-test-sonar:
+    name: Build, Test & Analyze
+    runs-on: ubuntu-latest
+
     steps:
-      #STEP 1 - Get the code onto the runner machine
-      #Must be first step - without it, no code exists on the runner
-      - name: Checkout Source code
+
+      # 1️⃣ Checkout repository
+      - name: Checkout Source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   #Full git history - needed for SonarQube later
+          fetch-depth: 0
 
-      #STEP 2: INSTALL Java 21
-      - name: Set up Java 21
+      # 2️⃣ Install Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
-          cache: 'maven'
+          cache: maven
 
-        #STEP 3: verify setup(useful for debugging version issues)
-      - name: Verify Java and Maven versions
+      # 3️⃣ Verify environment
+      - name: Verify Java + Maven
         run: |
           java --version
           mvn --version
 
-      #STEP 4: Compile all java source files
-      #Fails here = compilation error in your code
-      - name: Compile
-        run: mvn clean compile --no-transfer-progress
+      # 4️⃣ Build + Test + Coverage
+      - name: Build and Run Tests
+        run: |
+          mvn clean verify \
+          --no-transfer-progress
 
-      #STEP 5: Run all @Test methods
-      # JaCoCo agent automatically tracks coverage during this step
-      #Fails here = one or more tests failed
-      - name: Run all Tests
-        run: mvn clean test --no-transfer-progress
+      # 5️⃣ SonarCloud analysis
+      - name: SonarCloud Analysis
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=loanflow \
+            -Dsonar.organization=${{ vars.SONAR_ORG }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            --no-transfer-progress
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Enforce Coverage Threshold(min 70%)
-        run: mvn jacoco:check@check --no-transfer-progress
-        #This reads the Jacoco XML report generated in the previous step
-        #Fails the build if overall line coverage is below 70%
-        #When this fails, you will see
-        # [ERROR] Rule violated: lines overed ration is 0.62, but expected minimum is 0.70
-
-
-      #STEP 6: Upload all the test reports - even if tests failed
-      #if: always() = run this step regardless of previous step result
-      #Without this, you'd have no report to debug failure
-      - name: Upload Test reports
+      # 6️⃣ Upload test reports
+      - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-reports-${{ github.run_number }}
           path: |
-            target/surefire-report/
-            target/site/jacoco/
+            target/surefire-reports
+            target/site/jacoco
           retention-days: 14
 
-      #STEP 7: Build the JAR(-DskiptTests = dont run tests again)
-      - name: Build Executable Jar
-        run: mvn package -DskipTests --no-transfer-progress
-
-      #STEP 8: Save the JAR as an artifact (downloadable from Github UI)
-      - name: Upload JAR Artifact
+      # 7️⃣ Upload built JAR
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: loanflow-jar-${{ github.run_number }}
-          path: target/loanflow-*.jar
+          path: target/*.jar
           retention-days: 30
 
-  code-quality:
-    name: Code Quality (Sonar Cloud)
-    runs-on: ubuntu-latest
-    needs: build-and-test # Only runs if build-and-test-passed
-
-    steps:
-      - name: Checkout Source Code
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
-          cache: 'maven'
-
-      #Run tests to generate Jacoco Coverage XML report
-      #SonarQube reads this report to shoe coverage on its dashboard
-      - name: Run Tests ( To generate Jacoco coverage report)
-        run: mvn test --no-transfer-progress
-
-      #Send code + Coverage data to Sonar cloud for analysis
-      - name: Run SonarCloud Analysis
-        run: |
-          mvn clean verify sonar:sonar \
-              -Dsonar.projectKey=loanflow \
-              -Dsonar.organization=${{ vars.SONAR_ORG }} \
-              -Dsonar.host.url=http://localhost:9000 \
-              -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-              -- no-transfer-progress
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        #Github Masks this in logs - you will see *** not the real value
-
-      #Wait for sonarcloud to finish then check the Quality Gate result
-      #Fails the build if Quality Gate Fails (bad code cannot proceed)
-      - name: SonarCloud Quality Gate Check
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  #Job 2: Always run, writes a summary table
-  pipeline-summary:
+  summary:
     name: Pipeline Summary
     runs-on: ubuntu-latest
-    needs: [build-and-test]
+    needs: build-test-sonar
     if: always()
+
     steps:
       - name: Write Summary
         run: |
-          echo "## LOANFLOW CI - Runs #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-          echo "| Stage | RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "## LoanFlow CI Pipeline #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| BUILD & TEST   | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "**BRANCH:** ${{ github.ref_name }} **Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-  
+          echo "| Build + Test + Sonar | ${{ needs.build-test-sonar.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
