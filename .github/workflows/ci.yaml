@@ -61,7 +61,7 @@ jobs:
         run: mvn clean test --no-transfer-progress
 
       - name: Enforce Coverage Threshold(min 70%)
-        run: mvn jacoco:check --no-transer-progress
+        run: mvn jacoco:check --no-transfer-progress
         #This reads the Jacoco XML report generated in the previous step
         #Fails the build if overall line coverage is below 70%
         #When this fails, you will see
