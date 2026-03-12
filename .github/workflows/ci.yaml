@@ -70,7 +70,7 @@ jobs:
     needs: build-and-test
     services:
       sonarqube:
-        image: sonarqube:community
+        image: sonarqube
         ports:
           - 9000:9000
         options: >-
