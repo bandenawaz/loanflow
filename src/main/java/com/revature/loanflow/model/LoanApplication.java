@@ -35,6 +35,13 @@ public class LoanApplication {
 
     private LoanStatus loanStatus;
 
-    public LoanApplication(String raviKumar, String number, int i, double v, double v1, int i1) {
+    public LoanApplication(String customerName, String mobileNumber, int creditScore, 
+                           double monthlyIncome, double loanAmount, int tenureInMonths) {
+        this.customerName = customerName;
+        this.mobileNumber = mobileNumber;
+        this.creditScore = creditScore;
+        this.monthlyIncome = monthlyIncome;
+        this.loanAmount = loanAmount;
+        this.tenureInMonths = tenureInMonths;
     }
 }

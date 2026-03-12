@@ -29,7 +29,7 @@ public class EmiCalculator {
         double monthlyRate = annualRate /12.0 /100.0;
         double power = Math.pow(1 + monthlyRate, tenureInMonths);
         double emi = principal * monthlyRate * power / (power - 1);
-        return Math.round(emi * tenureInMonths * 100.0) / 100.0;
+        return Math.round(emi * 100.0) / 100.0;
 
     }
     public static double calculateTotalPayment(double emi, int tenureMonths) {

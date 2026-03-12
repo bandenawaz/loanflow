@@ -1,26 +1,28 @@
 package com.revature.loanflow.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.revature.loanflow.model.LoanApplication;
+import com.revature.loanflow.services.LoanService;
 import org.junit.jupiter.api.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-
-@SpringBootTest
-@AutoConfigureMockMvc
 
 @DisplayName("LoanController REST API Tests")
 class LoanControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
+    private MockMvc mockMvc;
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        LoanService loanService = new LoanService();
+        LoanController controller = new LoanController(loanService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        objectMapper = new ObjectMapper();
+    }
 
     private LoanApplication valid() {
         return new LoanApplication("Priya Sharma", "8765432109",
