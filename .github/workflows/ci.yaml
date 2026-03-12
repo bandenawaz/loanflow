@@ -128,7 +128,7 @@ jobs:
       #Wait for sonarcloud to finish then check the Quality Gate result
       #Fails the build if Quality Gate Fails (bad code cannot proceed)
       - name: SonarCloud Quality Gate Check
-        uses: sonarsource/sonarqube-gate-action@master
+        uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
