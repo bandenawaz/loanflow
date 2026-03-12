@@ -21,19 +21,16 @@ env:
 
 jobs:
 
-  build-test-sonar:
-    name: Build, Test & Analyze
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
-
-      # 1️⃣ Checkout repository
       - name: Checkout Source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Install Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -41,31 +38,14 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
-      # 3️⃣ Verify environment
       - name: Verify Java + Maven
         run: |
           java --version
           mvn --version
 
-      # 4️⃣ Build + Test + Coverage
-      - name: Build and Run Tests
-        run: |
-          mvn clean verify \
-          --no-transfer-progress
+      - name: Build & Run Tests
+        run: mvn clean verify --no-transfer-progress
 
-      # 5️⃣ SonarCloud analysis
-      - name: SonarCloud Analysis
-        run: |
-          mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=loanflow \
-            -Dsonar.organization=${{ vars.SONAR_ORG }} \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            --no-transfer-progress
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # 6️⃣ Upload test reports
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -76,8 +56,7 @@ jobs:
             target/site/jacoco
           retention-days: 14
 
-      # 7️⃣ Upload built JAR
-      - name: Upload JAR
+      - name: Upload built JAR
         uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -85,10 +64,48 @@ jobs:
           path: target/*.jar
           retention-days: 30
 
-  summary:
+  sonar-analysis:
+    name: SonarQube Analysis (Local)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    services:
+      sonarqube:
+        image: sonarqube:community
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd="curl -f http://localhost:9000/api/system/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        # Optional: persist data between runs
+        # volumes:
+        #   - sonarqube_data:/opt/sonarqube/data
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Run SonarQube Analysis
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=loanflow \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.login=admin \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            --no-transfer-progress
+
+  pipeline-summary:
     name: Pipeline Summary
     runs-on: ubuntu-latest
-    needs: build-test-sonar
+    needs: [build-and-test, sonar-analysis]
     if: always()
 
     steps:
@@ -98,7 +115,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Build + Test + Sonar | ${{ needs.build-test-sonar.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Test | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube Analysis | ${{ needs.sonar-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

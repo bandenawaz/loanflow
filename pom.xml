@@ -30,8 +30,8 @@
 		<java.version>21</java.version>
 		<!-- SonarCloud settings (update with your GitHub username) -->
 		<sonar.organization>bandenawaz</sonar.organization>
-		<sonar.projectKey>bandenawaz_loanflow</sonar.projectKey>
-		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.projectKey>loanflow</sonar.projectKey>
+		<!--<sonar.host.url>https://sonarcloud.io</sonar.host.url> -->
 		<sonar.coverage.jacoco.xmlReportPaths>
 			${project.build.directory}/site/jacoco/jacoco.xml
 		</sonar.coverage.jacoco.xmlReportPaths>
