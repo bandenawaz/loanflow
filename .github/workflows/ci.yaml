@@ -94,11 +94,11 @@ jobs:
     needs: [build-and-test]
     if: always()
     steps:
-      -name: Write Summary
-      run: |
-        echo "## LOANFLOW CI - Runs #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-        echo "| Stage | RESULT |" >> $GITHUB_STEP_SUMMARY
-        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| BUILD & TEST   | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "**BRANCH:** ${{ github.ref_name }} **Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+      - name: Write Summary
+        run: |
+          echo "## LOANFLOW CI - Runs #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| BUILD & TEST   | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**BRANCH:** ${{ github.ref_name }} **Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
   
