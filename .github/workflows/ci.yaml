@@ -1,0 +1,58 @@
+#LoanFLOW - CI Pipeline(Build + Test)
+
+name: LoanFlow CI Pipeline
+
+#TRIGGERS
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'  #If any feature branch
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: #manual trigger button in Github Ui
+
+# GLOBAL Variables
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+  #Faster JVM startup on CI machines(limited RAM)
+  MAVEN_OPTS: '-Xmx512 -XX:+TieredCompilation -XX:TieredStopAtLevel=1'
+
+#JOBS
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest   #Github provided Ubuntu Linux machine
+    steps:
+      #STEP 1 - Get the code onto the runner machine
+      #Must be first step - without it, no code exists on the runner
+      - name: Checkout Source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   #Full git history - needed for SonarQube later
+
+      #STEP 2: INSTALL Java 21
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'maven'
+
+        #STEP 3: verify setup(useful for debugging version issues)
+      - name: Verify Java and Maven versions
+        run: |
+          java --version
+          mvn --version
+          
+      #STEP 4: Compile all java source files
+      #Fails here = compilation error in your code
+      - name: Compile
+        run: mvn clean compile --no-transfer-progress
+
+      #STEP 5: Run all @Test methods
+
